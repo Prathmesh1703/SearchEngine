@@ -9,7 +9,7 @@ interface SearchFormProps {
 
 const AVAILABLE_DOMAINS = [
   'https://x.com',
-  'https://twitter.com',
+  'https://www.threads.com',
   'https://www.tiktok.com',
   'https://www.reddit.com',
   'https://www.youtube.com',

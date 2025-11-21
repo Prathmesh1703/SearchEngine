@@ -2,7 +2,7 @@
 
 import os
 import re
-from typing import List, Dict
+from typing import List
 
 from exa_py import Exa
 from sentence_transformers import SentenceTransformer
@@ -37,27 +37,61 @@ class MemorySearchEngine:
             return 0.0
         return len(query_words & text_words) / len(query_words)
 
-    def search(self, query: str, domains: List[str] = None, num_results: int = 10):
-        """Perform hybrid search using EXA + semantic scoring"""
+    def normalize_domains(self, domains: List[str]) -> List[str]:
+        """
+        Convert frontend domains like:
+        https://x.com → x.com
+        https://www.tiktok.com → tiktok.com
+        https://www.reddit.com → reddit.com
+        """
+        normalized = []
+        for d in domains:
+            d = d.lower()
+            d = d.replace("https://", "").replace("http://", "")
+            d = d.replace("www.", "")
+            d = d.strip("/")
+            normalized.append(d)
+        return normalized
 
+    def domain_allowed(self, url: str, allowed_domains: List[str]) -> bool:
+        """
+        Ensure returned result URL matches one of the allowed domains exactly.
+        """
+        if not allowed_domains:
+            return True
+
+        for d in allowed_domains:
+            if d in url.lower():
+                return True
+        return False
+
+    def search(self, query: str, domains: List[str] = None, num_results: int = 10):
+        """Perform hybrid search using EXA + semantic scoring."""
+
+        # Normalize incoming domains for Exa
+        normalized_domains = None
         if domains:
+            normalized_domains = self.normalize_domains(domains)
+
+        # Query EXA
+        if normalized_domains:
             exa_results = self.exa.search(
                 query,
                 num_results=num_results,
-                type="keyword",
-                include_domains=domains
+                type="neural",
+                include_domains=normalized_domains
             )
         else:
             exa_results = self.exa.search(
                 query,
                 num_results=num_results,
-                type="keyword"
+                type="neural"
             )
 
         if not exa_results.results:
             return []
 
-        # Embed the query
+        # Embed query once
         query_vec = self.embed(query)
 
         final_results = []
@@ -67,23 +101,27 @@ class MemorySearchEngine:
             title = r.title or ""
             combined_text = f"{title}\n{text}"
 
+            # Strict post-filtering: DO NOT include if not in domain list
+            if normalized_domains:
+                if not self.domain_allowed(r.url, normalized_domains):
+                    continue
+
             text_vec = self.embed(combined_text)
 
             semantic_score = self.cosine_sim(query_vec, text_vec)
             keyword_score = self.keyword_overlap(query, combined_text)
 
-            # Weighted final score
             final_score = 0.7 * semantic_score + 0.3 * keyword_score
 
             final_results.append({
                 "url": r.url,
-                "title": r.title,
-                "text": r.text,
+                "title": title,
+                "text": text,
                 "semantic_score": semantic_score,
                 "keyword_score": keyword_score,
                 "final_score": final_score
             })
 
-        # Sort by final hybrid score
+        # Sort final results by hybrid score
         final_results = sorted(final_results, key=lambda x: x["final_score"], reverse=True)
         return final_results
