@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Moon, Sun, Check, Globe, X, Filter } from 'lucide-react';
 import Plasma from "./components/Plasma";
+import AnswerPanel from "./components/AnswerPanel";
 
 // ------------------ Types ------------------
 interface BackendResult {
@@ -13,6 +14,8 @@ interface BackendResult {
 }
 
 interface SearchResponse {
+  answer: string;
+  citations: { index: number; url: string }[];
   results: BackendResult[];
 }
 
@@ -36,7 +39,6 @@ const ThemeToggle = ({ isDarkMode, onToggle }: ThemeToggleProps) => (
 );
 
 // ------------------ Domain Selector ------------------
-
 interface DomainSelectorProps {
   availableDomains: string[];
   selectedDomains: string[];
@@ -88,13 +90,11 @@ const DomainSelector = ({ availableDomains, selectedDomains, onDomainsChange, di
   );
 };
 
-// ------------------ Search Form (Glassmorphic & Collapsible) ------------------
-
+// ------------------ Search Form (UI preserved) ------------------
 interface SearchFormProps {
   onSearch: (query: string, domains: string[], useLLM: boolean, numResults: number) => void;
   isLoading: boolean;
   hasSearched: boolean;
-  // NEW: Added these props to accept existing state values
   initialQuery?: string;
   initialDomains?: string[];
   initialNumResults?: number;
@@ -117,8 +117,7 @@ function SearchForm({
   initialDomains = [], 
   initialNumResults = 10 
 }: SearchFormProps) {
-  
-  // Initialize state with props so the form "remembers" what was passed to it
+
   const [query, setQuery] = useState(initialQuery);
   const [selectedDomains, setSelectedDomains] = useState<string[]>(initialDomains);
   const [numResults, setNumResults] = useState(initialNumResults);
@@ -126,11 +125,8 @@ function SearchForm({
   const [isExpanded, setIsExpanded] = useState(true);
   const [useLLM, setUseLLM] = useState(false);
 
-
   useEffect(() => {
-    if (hasSearched) {
-      setIsExpanded(false);
-    }
+    if (hasSearched) setIsExpanded(false);
   }, [hasSearched]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -139,11 +135,10 @@ function SearchForm({
       setQueryError("Please enter a search query.");
       return;
     }
-    setQueryError('');
     onSearch(query, selectedDomains, useLLM, numResults);
   };
 
-  // --- VIEW 1: COMPACT MODE (Sticky Top Bar) ---
+  // COMPACT VIEW
   if (hasSearched && !isExpanded) {
     return (
       <div className="fixed top-0 left-0 right-0 z-40 flex justify-center pt-6 px-4 animate-fadeIn">
@@ -182,7 +177,7 @@ function SearchForm({
     );
   }
 
-  // --- VIEW 2: EXPANDED MODE (Initial or Overlay) ---
+  // FULL EXPANDED UI
   const containerClasses = hasSearched 
     ? "fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/20 dark:bg-black/60 backdrop-blur-sm animate-fadeIn" 
     : "w-full max-w-2xl mx-auto mb-10 relative z-10";
@@ -217,7 +212,9 @@ function SearchForm({
             </button>
           )}
         </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
+
           {/* Query Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -227,7 +224,7 @@ function SearchForm({
               <input
                 type="text"
                 value={query}
-                autoFocus={hasSearched} 
+                autoFocus={hasSearched}
                 onChange={(e) => { setQuery(e.target.value); setQueryError(''); }}
                 className="
                   w-full px-4 py-3 pl-12 rounded-xl border
@@ -252,7 +249,8 @@ function SearchForm({
             onDomainsChange={setSelectedDomains}
             disabled={isLoading}
           />
-{/* Smart Query Optimization (LLM Toggle) */}
+
+{/* Smart Query Optimization Toggle */}
 <div className="flex items-center justify-between mt-5 mb-3">
   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
     Smart query optimization (LLM)
@@ -281,7 +279,7 @@ function SearchForm({
   </button>
 </div>
 
-          {/* Num Results */}
+          {/* Results Count */}
           <div>
             <label className="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <span>Results Count</span>
@@ -319,7 +317,6 @@ function SearchForm({
 }
 
 // ------------------ Search Results ------------------
-
 interface SearchResultsProps {
   results: SearchResponse;
 }
@@ -334,6 +331,12 @@ const SearchResults = ({ results }: SearchResultsProps) => {
 
   return (
     <div className="space-y-6">
+      {/* AI Answer Panel */}
+      {results.answer && (
+        <AnswerPanel answer={results.answer} citations={results.citations} />
+      )}
+
+      {/* Search Results */}
       {results.results.map((r, i) => (
         <div
           key={i}
@@ -370,8 +373,7 @@ const SearchResults = ({ results }: SearchResultsProps) => {
   );
 };
 
-// ------------------ Plasma Logic Helpers ------------------
-
+// ------------------ Plasma Helpers ------------------
 const LIGHT_PLASMA_COLOR = '#ff6b35';
 const DARK_PLASMA_COLOR = '#2f1e56';
 
@@ -396,14 +398,12 @@ const mixHexColors = (from: string, to: string, t: number): string => {
 };
 
 // ------------------ Main App ------------------
-
 function App() {
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // NEW: State to store the current search parameters so they persist across form instances
   const [currentQuery, setCurrentQuery] = useState('');
   const [currentDomains, setCurrentDomains] = useState<string[]>([]);
   const [currentNumResults, setCurrentNumResults] = useState(10);
@@ -438,30 +438,32 @@ function App() {
     setIsLoading(true);
     setError(null);
     setResults(null);
-    
-    // Save the parameters so the sticky header can use them
+    setHasSearched(true);
+
     setCurrentQuery(query);
     setCurrentDomains(domains);
     setCurrentNumResults(numResults);
 
-    setHasSearched(true);
-      try{
-        const res = await fetch("http://127.0.0.1:8000/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            query: query,
-            domains: domains,
-            use_llm: useLLM,
-            numResults: numResults
-          })
-        });
-        if (!res.ok) throw new Error("Search failed.");
-        const data = await res.json();
-        setResults(data);
-          } catch (err) {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query: query,
+          domains: domains,
+          use_llm: useLLM,
+          num_results: numResults
+        })
+      });
+
+      if (!res.ok) throw new Error("Search failed.");
+
+      const data = await res.json();
+      setResults(data);
+
+    } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed.");
     } finally {
       setIsLoading(false);
@@ -470,7 +472,6 @@ function App() {
 
   return (
     <div className={isDarkMode ? "dark" : ""}>
-      {/* CSS Animations needed for the overlay effect */}
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -480,15 +481,11 @@ function App() {
 
       <div className="relative min-h-screen overflow-hidden transition-colors duration-500  pt-20 md:pt-0">
 
-        {/* ----------------- BACKGROUND (PRESERVED) ----------------- */}
-        
-        {/* Background solid layer */}
         <div
           className="absolute inset-0 -z-20 transition-colors duration-500"
           style={{ backgroundColor: isDarkMode ? "#000" : "#fff" }}
         />
 
-        {/* Plasma background */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <Plasma
             color={plasmaColor}
@@ -499,9 +496,7 @@ function App() {
             mouseInteractive={false}
           />
         </div>
-        {/* ------------------------------------------------------------ */}
 
-        {/* Theme Toggle */}
         <div className="absolute top-4 right-4 z-50">
           <ThemeToggle
             isDarkMode={isDarkMode}
@@ -509,10 +504,8 @@ function App() {
           />
         </div>
 
-        {/* MAIN CONTENT */}
         <div className="container mx-auto px-4 pb-20">
 
-          {/* INITIAL VIEW: Centered Logo + Search Box */}
           {!hasSearched && (
             <div className="flex flex-col items-center justify-center min-h-[70vh] py-10 px-4 animate-fadeIn">
               <h1 className="text-4xl md:text-6xl font-bold mb-8 text-gray-900 dark:text-white tracking-tight text-center">
@@ -523,7 +516,6 @@ function App() {
             </div>
           )}
 
-          {/* SEARCHED VIEW: Results + Fixed Header */}
           {hasSearched && (
             <div className="animate-fadeIn">
               
@@ -531,13 +523,11 @@ function App() {
                 onSearch={handleSearch} 
                 isLoading={isLoading} 
                 hasSearched={true}
-                // PASSING THE PERSISTED STATE DOWN
                 initialQuery={currentQuery}
                 initialDomains={currentDomains}
                 initialNumResults={currentNumResults}
               />
 
-              {/* Results Container - Added padding top to account for fixed header */}
               <div className="w-full max-w-3xl mx-auto mt-32 px-4 md:px-0">
 
                 {error && (

@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  memorysearch-redis:
+    image: redis:7-alpine
+    container_name: memorysearch-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  memorysearch-backend:
+    build: ./backend
+    container_name: memorysearch-backend
+    restart: always
+    depends_on:
+      - memorysearch-redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./backend/.env
+
+volumes:
+  redis-data:

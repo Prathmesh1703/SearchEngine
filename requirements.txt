@@ -1,7 +1,0 @@
-fastapi 
-uvicorn 
-sentence-transformers
-faiss-cpu
-whoosh 
-exa_py
-python-dotenv

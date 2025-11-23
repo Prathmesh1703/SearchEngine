@@ -1,10 +1,12 @@
 import os
+import load_env
+from cache import make_key, get_cache, set_cache
 from typing import List, Tuple, Optional
 import google.generativeai as genai
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not GEMINI_API_KEY:
+if not os.getenv("GEMINI_API_KEY"):
     raise RuntimeError("Missing GEMINI_API_KEY in environment")
 
 # Configure Gemini client
@@ -38,8 +40,14 @@ def normalize_query_with_llm(original_query: str, domains: Optional[List[str]] =
     Returns (normalized_query, debug_explanation)
     """
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    # ---------- CACHE CHECK ----------
+    cache_key = make_key("llm_norm", original_query, domains, 0, False)
+    cached = get_cache(cache_key)
+    if cached:
+        return cached["normalized"], cached["debug"]
+    # ---------------------------------
 
+    model = genai.GenerativeModel("gemini-2.5-flash")
     domains_hint = build_domains_hint(domains)
 
     user_prompt = f"""
@@ -66,7 +74,15 @@ Rewrite this into an optimized search query ONLY.
             f"normalized_query={normalized!r}"
         )
 
+        # ---------- WRITE TO CACHE ----------
+        set_cache(cache_key, {
+            "normalized": normalized,
+            "debug": debug_info
+        }, ttl_seconds=6 * 3600)
+        # ------------------------------------
+
         return normalized, debug_info
 
     except Exception as e:
         return original_query, f"Gemini normalization failed: {e!r}"
+

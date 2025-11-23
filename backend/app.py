@@ -1,25 +1,23 @@
 # backend/app.py
 
-import uvicorn
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+from fastapi.middleware.cors import CORSMiddleware
 
-from dotenv import load_dotenv
-import os
+import load_env   # <-- load all environment keys
 
+from reasoner import run_reasoning_layer
 from search import MemorySearchEngine
+from orchestrator import orchestrator   # <-- already includes all providers
 from llm import normalize_query_with_llm
+from models import SearchItem
 
-
-# Load environment variables
-load_dotenv()
 
 app = FastAPI()
-engine = MemorySearchEngine()
 
-# Allow frontend to call backend
+
+# ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,54 +26,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ---------------- Request Model ----------------
 class SearchRequest(BaseModel):
     query: str
-    domains: List[str] | None = None
+    domains: Optional[List[str]] = None
     num_results: int = 10
+    use_llm: bool = False
 
 
+# ---------------- Search Endpoint ----------------
 @app.post("/search")
 async def search(req: SearchRequest):
-    try:
-        # LLM STEP — Rewrite the query using Gemini
-        effective_query = req.query
-        llm_debug = None
 
-        if req.use_llm:
-            try:
-                normalized, debug = normalize_query_with_llm(req.query, req.domains)
+    effective_query = req.query
+    llm_debug = None
 
-                if normalized and normalized.strip():
-                    effective_query = normalized.strip()
-                    llm_debug = debug
+    # ---- Optional LLM Query Normalization ----
+    if req.use_llm:
+        try:
+            normalized, debug = normalize_query_with_llm(req.query, req.domains)
+            if normalized.strip():
+                effective_query = normalized.strip()
+            llm_debug = debug
+        except Exception as e:
+            llm_debug = f"LLM normalization failed: {e}"
 
-            except Exception as e:
-                llm_debug = f"Gemini normalization failed: {e!r}"
+    # ---- Run orchestrator over all providers ----
+    final_results: List[SearchItem] = orchestrator.search(
+        query=effective_query,
+        domains=req.domains,
+        num_results=req.num_results
+    )
 
-        # EXA SEARCH
-        results = engine.search(
-            query=effective_query,
-            domains=req.domains,
-            num_results=req.num_results
-        )
+    # ---- LLM Reasoning (Gemini) ----
+    ai_analysis = run_reasoning_layer(effective_query, final_results)
 
-        return {
-            "query_used": effective_query,
-            "original_query": req.query,
-            "use_llm": req.use_llm,
-            "llm_debug": llm_debug,
-            "results": results,
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
-@app.get("/")
-def root():
-    return {"message": "Memory Search Engine (EXA-powered) is running!"}
-
-
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    # ---- Final Response ----
+    return {
+        "results": [r.dict() for r in final_results],
+        "answer": ai_analysis["summary"],
+        "citations": ai_analysis["citations"],
+        "effective_query": effective_query,
+        "providers_used": list({r.provider for r in final_results}),
+        "llm_used": req.use_llm,
+        "llm_debug": llm_debug
+    }
