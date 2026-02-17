@@ -1,134 +1,230 @@
+# Memory Search Engine  
+### AI-Powered Retrieval-Augmented Search Platform
 
-# 🔍 Memory Search Engine
+Memory Search Engine is a modern AI-powered search platform that combines multi-provider web search with advanced LLM reasoning. Built on Retrieval-Augmented Generation (RAG) principles, the system delivers synthesized, citation-backed answers alongside traditional search results through a responsive, interactive frontend.
 
-A modern, AI-powered search engine that combines traditional search results with advanced LLM reasoning, all wrapped in a sleek, interactive frontend. This project utilizes Retrieval-Augmented Generation (RAG) concepts to provide synthesized answers alongside direct source citations.
+---
 
-## ✨ Features
+## Table of Contents
 
-- **AI-Powered Answers**: Generates concise summaries and answers using Google Gemini Pro.
-- **Multi-Provider Search**: Orchestrates search across multiple providers (Exa, SerpAPI, etc.) for comprehensive results.
-- **Smart Query Optimization**: Optional LLM-based query refinement to improve search relevance.
-- **Domain Filtering**: Filter search results by specific domains (e.g., Reddit, Twitter, YouTube).
-- **Interactive UI**:
-  - **Plasma Background**: Dynamic, calming background animation using OGL.
-  - **Dark/Light Mode**: Fully responsive theming.
-  - **Real-time Feedback**: Loading states, error handling, and animated transitions.
-- **Hybrid Scoring**: Ranks results based on both semantic meaning and keyword matching.
+- Overview  
+- Core Capabilities  
+- System Architecture  
+- Tech Stack  
+- Installation  
+- Environment Configuration  
+- Running the Application  
+- Project Structure  
+- Design Highlights  
+- Contributing  
+- License  
 
-## 🛠 Tech Stack
+---
+
+## Overview
+
+Traditional search engines return links. Memory Search Engine goes further by:
+
+- Aggregating results from multiple providers  
+- Ranking results using hybrid semantic scoring  
+- Generating AI-synthesized answers  
+- Providing transparent source citations  
+- Delivering a polished, interactive user experience  
+
+The system integrates Google Gemini for reasoning and leverages vector search to enhance contextual retrieval.
+
+---
+
+## Core Capabilities
+
+### AI-Generated Answers
+- Synthesized summaries using Google Gemini  
+- Context-aware reasoning over retrieved documents  
+- Source-grounded responses  
+
+### Multi-Provider Search Orchestration
+- Exa.ai integration  
+- SerpAPI integration  
+- Extensible architecture for additional providers  
+
+### Smart Query Optimization
+- Optional LLM-based query refinement  
+- Improved semantic relevance  
+
+### Domain-Based Filtering
+- Restrict results to specific platforms (Reddit, Twitter, YouTube, etc.)  
+
+### Hybrid Ranking
+- Combines semantic similarity (embeddings)  
+- Keyword-based scoring  
+- Relevance-weighted ranking  
+
+### Interactive Frontend
+- Plasma WebGL animated background (OGL)  
+- Dark and Light theme support  
+- Real-time loading states and transitions  
+- Clean, responsive UI built with Tailwind CSS  
+
+---
+
+## System Architecture
+
+
+Frontend (React + TypeScript)
+↓
+FastAPI Backend
+↓
+Search Orchestrator
+↓ ↓
+Exa API SerpAPI
+↓
+Vector Store (FAISS)
+↓
+LLM Reasoner (Google Gemini)
+↓
+Citation-Backed Response
+
+
+The backend aggregates results, applies semantic ranking, stores contextual memory in a vector database, and generates final responses using an LLM reasoning layer.
+
+---
+
+## Tech Stack
 
 ### Backend
-- **Framework**: FastAPI (Python)
-- **AI/LLM**: Google Gemini (via `google-generativeai`)
-- **Search Providers**: Exa.ai, SerpAPI
-- **Vector Search**: `sentence-transformers`, `faiss-cpu` (for RAG capabilities)
-- **Database/Cache**: Redis (via Docker)
-- **Utilities**: `pydantic`, `python-dotenv`, `numpy`
+- FastAPI (Python)
+- Google Gemini (`google-generativeai`)
+- Exa.ai API
+- SerpAPI
+- Sentence Transformers
+- FAISS (Vector Search)
+- Redis (Caching)
+- Pydantic
+- NumPy
+- python-dotenv
 
 ### Frontend
-- **Framework**: React (Vite)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Graphics**: OGL (WebGL for Plasma effect)
+- React (Vite)
+- TypeScript
+- Tailwind CSS
+- Lucide React
+- OGL (WebGL-based Plasma Effect)
 
-## 🚀 Getting Started
+---
+
+## Installation
 
 ### Prerequisites
-- **Python 3.8+**
-- **Node.js 16+**
-- **Docker & Docker Compose** (optional but recommended for backend/redis)
-- **API Keys**:
-  - Google Gemini API Key
-  - Exa API Key
-  - SerpAPI Key (optional)
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/memory-search-engine.git
-cd memory-search-engine
-```
+- Python 3.8+
+- Node.js 16+
+- Docker & Docker Compose (recommended)
+- API Keys:
+  - Google Gemini
+  - Exa API
+  - SerpAPI (optional)
 
-### 2. Backend Setup
-You can run the backend either directly or using Docker.
+---
 
-#### Option A: Docker (Recommended)
-Make sure Docker is running.
-Create a `.env` file in the `backend` directory with your API keys:
+## Environment Configuration
+
+Create a `.env` file inside the `backend` directory:
 
 ```env
 GEMINI_API_KEY=your_gemini_key_here
 EXA_API_KEY=your_exa_key_here
 SERPAPI_KEY=your_serpapi_key_here
-# BRAVE_API_KEY=your_brave_key_here (Optional)
-```
+Running the Application
+Option A: Docker (Recommended)
 
-Run the backend and Redis services:
-```bash
+Ensure Docker is running.
+
 docker-compose up --build
-```
-The backend server will start at `http://127.0.0.1:8000`.
 
-#### Option B: Manual Setup
-Navigate to the backend directory and set up the Python environment.
+Backend runs at:
 
-```bash
+http://127.0.0.1:8000
+Option B: Manual Backend Setup
 cd backend
 python -m venv venv
-# On Windows:
+
+Activate environment:
+
+Windows
+
 venv\Scripts\activate
-# On macOS/Linux:
+
+macOS/Linux
+
 source venv/bin/activate
 
+Install dependencies:
+
 pip install -r requirements.txt
-```
 
-Ensure you have a local Redis instance running or update the connection string if needed.
-Run the backend server:
-```bash
+Ensure Redis is running locally, then start the server:
+
 uvicorn app:app --reload
-```
+Frontend Setup
 
-### 3. Frontend Setup
-Open a new terminal and navigate to the frontend directory.
+In a new terminal:
 
-```bash
 cd frontend
 npm install
-```
-
-Run the development server:
-```bash
 npm run dev
-```
-The application will be available at `http://localhost:5173`.
 
-## 📂 Project Structure
+Frontend runs at:
 
-```
+http://localhost:5173
+Project Structure
 memory-search-engine/
 ├── backend/
-│   ├── app.py              # Main FastAPI application
-│   ├── orchestrator.py     # Manages search providers
-│   ├── reasoner.py         # AI reasoning logic (Gemini)
-│   ├── search.py           # Core search engine logic
-│   ├── llm.py              # LLM utilities for query normalization
-│   ├── models.py           # Pydantic data models
-│   ├── vector_memory/      # Vector database storage
-│   └── requirements.txt    # Python dependencies
+│   ├── app.py
+│   ├── orchestrator.py
+│   ├── reasoner.py
+│   ├── search.py
+│   ├── llm.py
+│   ├── models.py
+│   ├── vector_memory/
+│   └── requirements.txt
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # Reusable UI components (Plasma, AnswerPanel)
-│   │   ├── App.tsx         # Main application logic
-│   │   └── main.tsx        # Entry point
-│   ├── package.json        # Frontend dependencies
-│   └── tailwind.config.js  # Tailwind configuration
-└── docker-compose.yml      # Container orchestration (Redis + Backend)
-```
+│   │   ├── components/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   └── tailwind.config.js
+│
+└── docker-compose.yml
+Design Highlights
 
-## 🤝 Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+Retrieval-Augmented Generation (RAG) architecture
 
-## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
+Hybrid semantic + keyword ranking
+
+Modular search provider orchestration
+
+Scalable vector memory design
+
+Production-ready backend structure
+
+Modern UI with real-time state handling
+
+Contributing
+
+Contributions are welcome.
+
+Fork the repository
+
+Create a feature branch
+
+Commit changes
+
+Push to your fork
+
+Submit a Pull Request
+
+License
+
+This project is licensed under the MIT License.
