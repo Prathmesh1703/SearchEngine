@@ -1,6 +1,6 @@
 # Memory Search Engine  
 ### AI-Powered Retrieval-Augmented Search Platform
-
+![Prathmesh Bharsakle](preview.png)
 Memory Search Engine is a modern AI-powered search platform that combines multi-provider web search with advanced LLM reasoning. Built on Retrieval-Augmented Generation (RAG) principles, the system delivers synthesized, citation-backed answers alongside traditional search results through a responsive, interactive frontend.
 
 ---
